@@ -99,7 +99,7 @@ for key, group in groups.items():
         optimizer = optim.Adam(net.parameters(), lr=0.0005)
         scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=7)
 
-        res = list(train(net, 200, 128, 0.0005, 1, 128, 128, 3, new_xy))
+        res = list(train(net, 200, 128, 0.0005, 1, 128, 128, 3, new_xy, weight_, optimizer, scheduler))
         res.append(key)
 
         # Batch the validation prediction so it fits
@@ -145,7 +145,7 @@ for i in to_train.items():
         scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=7)
         # _, _, _, _, _, _, _, val_loss = train(net, 40, 256, 0.0001, 1, 128)
         # print(val_loss)
-        res = list(train(net, 200, 128, 0.0005, 1, 128, 128, 3, xy, all_x=i[0]))
+        res = list(train(net, 200, 128, 0.0005, 1, 128, 128, 3, xy, weight_, optimizer, scheduler, all_x=i[0]))
 
         # This portion of the loop gets the auc
         # Batch the validation prediction so it fits

@@ -3,7 +3,6 @@
 import pandas as pd
 import pickle
 import numpy as np
-import torch.nn as nn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch.optim as optim
 from modelling.model_class import vecNet2
@@ -36,17 +35,8 @@ y = torch.Tensor([i[3] for i in training_data])
 VAL_PCT = 0.1  # lets reserve 10% of our data for validation/test
 val_size = int(len(X[0])*VAL_PCT)
 
-loss_function = nn.BCELoss(reduce=False)
-
-
-
-
 weight = torch.tensor([0.688, 0.312])
 weight_ = weight[y.data.view(-1).long()].view_as(y).to(device)
-
-
-
-
 
 EPOCHS = 200
 BATCH_SIZE = 128
@@ -84,7 +74,8 @@ for vec_node in vec_nodes:
                     net = vecNet2(vec_node, vec_layer, 43, cnn_node, cnn_node, cnn_layer, cnn_layer).to(device)
                     optimizer = optim.Adam(net.parameters(), lr=0.0005)
                     scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=7)
-                    models.append(train(net, 200, batch_size, 0.0005, vec_layer, vec_node, cnn_node, cnn_layer, xy))
+                    models.append(train(net, 200, batch_size, 0.0005, vec_layer, vec_node, cnn_node, cnn_layer, xy,
+                                        optimizer, weight_, scheduler))
                     with open('models/new/ensemble_param_test4.pickle', 'wb') as dest:
                         pickle.dump(models, dest)
 

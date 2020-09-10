@@ -1,10 +1,20 @@
 """This file holds the additional functions used in modelling"""
 
 import torch
+import torch.nn as nn
 import os
+import time
+
+
+device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
+
+VAL_PCT = 0.1  # lets reserve 10% of our data for validation/test
+
+loss_function = nn.BCELoss(reduce=False)
 
 
 def shuffle_data(X, y, perm=False):
+    val_size = int(len(X[0]) * VAL_PCT)
     # Shuffle data, can give a permutation for an existing shuffle
     if str(perm) == 'False':
         perm = torch.randperm(len(X[0]))
@@ -40,16 +50,22 @@ def shuffle_val(val_X1, val_X2, val_X3, val_y):
 
 
 # Forward pass in a function so it can be used to also calculate validation acc/loss
-def fwd_pass(X1, X2, X3, y, train=False):
+def fwd_pass(X1, X2, X3, y, net, optimizer, weight, train=False, all_x=True):
     if train:
         net.zero_grad()
-    outputs = net(X1.to(device), X2.to(device), X3.to(device))
+    if all_x == 'img':
+        outputs = net(X1.to(device), X3.to(device))
+    elif all_x == 'dsm':
+        outputs = net(X2.to(device), X3.to(device))
+    else:
+        outputs = net(X1.to(device), X2.to(device), X3.to(device))
+
     matches = [torch.round(i) == j for i, j in zip(outputs, y)]
 
     acc = matches.count(True) / len(matches)
     y = y.unsqueeze(1)
     loss = loss_function(outputs, y)
-    loss_class_weighted = loss * weight_
+    loss_class_weighted = loss * weight
     loss = loss_class_weighted.mean()
 
     if train:
@@ -58,17 +74,19 @@ def fwd_pass(X1, X2, X3, y, train=False):
     return acc, loss
 
 
-def test(test_X1, test_X2, test_X3, test_y, size=128):
+def test(test_X1, test_X2, test_X3, test_y, net, optimizer, weight, size=128, all_x=True):
     # Get a slice starting at a random point
     test_X1, test_X2, test_X3, test_y = shuffle_val(test_X1, test_X2, test_X3, test_y)
     X1, X2, X3 = test_X1[:size].view(-1, 1, 128, 128), test_X2[:size].view(-1, 1, 64, 64), test_X3[:size]
     y = test_y[:size]
     with torch.no_grad():
-        val_acc, val_loss = fwd_pass(X1.to(device), X2.to(device), X3.to(device), y.to(device))
+        val_acc, val_loss = fwd_pass(X1.to(device), X2.to(device), X3.to(device), y.to(device), net, optimizer, weight,
+                                     all_x=all_x)
     return val_acc, val_loss
 
 
-def train(net, EPOCHS, BATCH_SIZE, LR, LYR, START_NODES, cnn_node, cnn_layer, xy, target=0):
+def train(net, EPOCHS, BATCH_SIZE, LR, LYR, START_NODES, cnn_node, cnn_layer, xy, optimizer, weight, scheduler,
+          target=0, all_x=True):
     MODEL_NAME = f"model-{int(time.time())}"
     print(MODEL_NAME)
     train_X1, train_X2, train_X3, train_y, val_X1, val_X2, val_X3, val_y = xy
@@ -94,10 +112,10 @@ def train(net, EPOCHS, BATCH_SIZE, LR, LYR, START_NODES, cnn_node, cnn_layer, xy
                 net.zero_grad()
 
                 acc, loss = fwd_pass(batch_X[0].to(device), batch_X[1].to(device), batch_X[2].to(device),
-                                     batch_y.to(device), train=True)
+                                     batch_y.to(device), net, optimizer, weight, train=True, all_x=all_x)
 
                 if i % 32 == 0:
-                    val_acc, val_loss = test(val_X1, val_X2, val_X3, val_y)
+                    val_acc, val_loss = test(val_X1, val_X2, val_X3, val_y, net, optimizer, weight, all_x=all_x)
 
                     f.write(
                         f"{MODEL_NAME},{round(time.time(), 3)},{epoch},{round(float(acc), 2)},{round(float(loss), 2)},"
