@@ -1,4 +1,4 @@
-# Produces extent shapfiles for each tile for each year
+"""Produces extent shapfiles for each tile for each year"""
 
 import rasterio
 import os
@@ -33,3 +33,8 @@ for year in years:
                 'properties': {'id': 1},
             })
 
+
+import pandas as pd
+
+
+positive = pd.read_csv('data/final_data/positive.csv')

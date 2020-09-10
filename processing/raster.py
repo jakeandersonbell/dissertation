@@ -18,40 +18,32 @@ def get_features(gdf):
     return [json.loads(gdf.to_json())['features'][0]['geometry']]
 
 
-parent_path = "D:/Dissertation"
+parent_path = "D:/Dissertation/DSM"
 
-years = [str(i) for i in range(2012, 2019)]
+# years = [str(i) for i in range(2012, 2019)]
 
-for year in years:
+for tile in [i for i in os.listdir(parent_path) if '.' not in i]:
 
-    tiles = [i for i in os.listdir(parent_path + "/imagery/" + year) if '.txt' not in i]
+    img_paths = [os.path.join(parent_path, tile, i) for i in os.listdir(os.path.join(parent_path, tile))]
 
-    for tile in tiles:
+    src_files_to_mosaic = [rasterio.open(fp) for fp in img_paths]
 
-        path = parent_path + "/imagery/" + year + "/" + tile + "/" + tile[:2].lower() + "/"
+    mosaic, out_trans = merge(src_files_to_mosaic)
 
-        images = [i for i in os.listdir(path) if ".jpg" in i]
+    out_meta = src_files_to_mosaic[0].meta.copy()
 
-        image_paths = [path + i for i in images]
+    # Update the metadata
+    out_meta.update({"driver": "GTiff",
+                     "height": mosaic.shape[1],
+                     "width": mosaic.shape[2],
+                     "transform": out_trans,
+                     "crs": "+proj=utm +zone=35 +ellps=GRS80 +units=m +no_defs "
+                     }
+                    )
 
-        src_files_to_mosaic = [rasterio.open(fp) for fp in image_paths]
-
-        mosaic, out_trans = merge(src_files_to_mosaic)
-
-        out_meta = src_files_to_mosaic[0].meta.copy()
-
-        # Update the metadata
-        out_meta.update({"driver": "GTiff",
-                         "height": mosaic.shape[1],
-                         "width": mosaic.shape[2],
-                         "transform": out_trans,
-                         "crs": "+proj=utm +zone=35 +ellps=GRS80 +units=m +no_defs "
-                         }
-                        )
-
-        with rasterio.open(parent_path + "/imagery/" + year + "/" + tile + "/" +
-                           tile + "_full.tif", "w", **out_meta) as dest:
-            dest.write(mosaic)
+    with rasterio.open(os.path.join(parent_path, tile, tile + "_full.tif"), "w", **out_meta) as dest:
+        dest.write(mosaic)
+        print(tile)
 
 # out_image, out_transform = mask(mosaic, [shape1], crop=True)
 

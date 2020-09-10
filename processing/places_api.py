@@ -17,7 +17,9 @@ import warnings
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
 
-api_key = open('processing/key.txt', 'r').read()
+
+if __name__ == '__main__':
+    api_key = open('misc/key.txt', 'r').read()
 
 
 def bng_to_latlng(bounds):
@@ -34,11 +36,11 @@ def bng_to_latlng(bounds):
     return transform(project.transform, polygon)
 
 
-def places(latlng, place_type):
+def places(latlng, place_type, api_key):
     # url variable store url
     url = "https://maps.googleapis.com/maps/api/place/textsearch/json?"
 
-    query = url + 'type=' + place_type + '&location=' + latlng + '&radius=100' + '&key=' + api_key
+    query = url + 'type=' + place_type + '&location=' + latlng + '&radius=1000' + '&key=' + api_key
     r = requests.get(query)
 
     # json method of response object convert
